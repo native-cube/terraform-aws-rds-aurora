@@ -167,8 +167,8 @@ resource "aws_rds_cluster" "main" {
     }
 
     precondition {
-      condition = local.is_multi_az ? (var.storage_type != null && contains(["gp3", "io1", "io2"], var.storage_type)) : (
-        var.storage_type == null || contains(["aurora", "aurora-iopt1"], var.storage_type)
+      condition = local.is_multi_az ? (var.storage_type == null ? false : contains(["gp3", "io1", "io2"], var.storage_type)) : (
+        var.storage_type == null ? true : contains(["aurora", "aurora-iopt1"], var.storage_type)
       )
       error_message = "Aurora storage_type must be aurora or aurora-iopt1; RDS Multi-AZ storage_type must be gp3, io1, or io2."
     }
@@ -182,10 +182,13 @@ resource "aws_rds_cluster" "main" {
       condition = !local.is_multi_az ? true : (
         var.storage_type == null ? false : (
           contains(["io1", "io2"], var.storage_type) ? (
-            var.iops != null && var.allocated_storage != null &&
-            var.iops / var.allocated_storage >= 0.5 && var.iops / var.allocated_storage <= 50
+            var.iops == null || var.allocated_storage == null ? false : (
+              var.iops / var.allocated_storage >= 0.5 && var.iops / var.allocated_storage <= 50
+            )
             ) : (
-            var.iops == null || (var.allocated_storage != null && var.iops / var.allocated_storage >= 0.5 && var.iops / var.allocated_storage <= 50)
+            var.iops == null ? true : (var.allocated_storage == null ? false : (
+              var.iops / var.allocated_storage >= 0.5 && var.iops / var.allocated_storage <= 50
+            ))
           )
         )
       )
@@ -213,24 +216,26 @@ resource "aws_rds_cluster" "main" {
     }
 
     precondition {
-      condition = var.availability_zones == null || !local.create_subnet_group || !local.validate_network || alltrue([
-        for availability_zone in var.availability_zones : contains(local.selected_subnet_azs, availability_zone)
-      ])
+      condition = var.availability_zones == null ? true : (
+        !local.create_subnet_group || !local.validate_network || alltrue([
+          for availability_zone in var.availability_zones : contains(local.selected_subnet_azs, availability_zone)
+        ])
+      )
       error_message = "Each configured availability_zone must have a subnet in the DB subnet group."
     }
 
     precondition {
-      condition     = !local.is_multi_az || var.availability_zones == null || length(var.availability_zones) == 3
+      condition     = !local.is_multi_az ? true : (var.availability_zones == null ? true : length(var.availability_zones) == 3)
       error_message = "RDS Multi-AZ DB clusters require exactly three configured availability_zones when the input is set."
     }
 
     precondition {
-      condition     = local.create_subnet_group || (var.db_subnet_group_name != null && trimspace(var.db_subnet_group_name) != "")
+      condition     = local.create_subnet_group ? true : (var.db_subnet_group_name == null ? false : trimspace(var.db_subnet_group_name) != "")
       error_message = "db_subnet_group_name is required when create_db_subnet_group is false."
     }
 
     precondition {
-      condition     = !local.create_security_group || (var.vpc_id != null && trimspace(var.vpc_id) != "")
+      condition     = !local.create_security_group ? true : (var.vpc_id == null ? false : trimspace(var.vpc_id) != "")
       error_message = "vpc_id is required when create_security_group is true."
     }
 
@@ -261,7 +266,7 @@ resource "aws_rds_cluster" "main" {
     }
 
     precondition {
-      condition = var.serverless_v2_scaling_configuration == null || (
+      condition = var.serverless_v2_scaling_configuration == null ? true : (
         local.is_aurora && var.engine_mode == "provisioned" &&
         (var.cluster_instance_class == null || var.cluster_instance_class == "db.serverless") &&
         alltrue([for instance in values(var.instances) : coalesce(instance.instance_class, "db.serverless") == "db.serverless"])
@@ -312,7 +317,7 @@ resource "aws_rds_cluster" "main" {
     }
 
     precondition {
-      condition     = var.s3_import == null || (var.engine == "aurora-mysql" && !local.is_serverless_v1)
+      condition     = var.s3_import == null ? true : (var.engine == "aurora-mysql" && !local.is_serverless_v1)
       error_message = "s3_import is supported only for provisioned Aurora MySQL clusters."
     }
 
@@ -351,32 +356,40 @@ resource "aws_rds_cluster" "main" {
     }
 
     precondition {
-      condition     = !local.validate_engine || data.aws_rds_engine_version.selected[0].status == "available"
+      condition     = !local.validate_engine ? true : data.aws_rds_engine_version.selected[0].status == "available"
       error_message = "The selected engine version is not currently available in the target Region."
     }
 
     precondition {
-      condition     = !local.validate_engine || !local.is_serverless_v1 || contains(data.aws_rds_engine_version.selected[0].supported_modes, "serverless")
+      condition     = !local.validate_engine ? true : (!local.is_serverless_v1 || contains(data.aws_rds_engine_version.selected[0].supported_modes, "serverless"))
       error_message = "The selected engine version does not support Serverless v1."
     }
 
     precondition {
-      condition     = !local.validate_engine || !local.has_global_cluster || data.aws_rds_engine_version.selected[0].supports_global_databases
+      condition     = !local.validate_engine ? true : (!local.has_global_cluster || data.aws_rds_engine_version.selected[0].supports_global_databases)
       error_message = "The selected engine version does not support Aurora global databases."
     }
 
     precondition {
-      condition     = !local.validate_engine || !local.is_limitless || data.aws_rds_engine_version.selected[0].supports_limitless_database
+      condition     = !local.validate_engine ? true : (!local.is_limitless || data.aws_rds_engine_version.selected[0].supports_limitless_database)
       error_message = "The selected engine version does not support Aurora Limitless."
     }
 
     precondition {
-      condition     = !local.validate_engine || !var.enable_local_write_forwarding || data.aws_rds_engine_version.selected[0].supports_local_write_forwarding
+      condition = !local.validate_engine ? true : alltrue([
+        for instance_class in local.orderable_instance_classes :
+        data.aws_rds_orderable_db_instance.selected[instance_class].instance_class == instance_class
+      ])
+      error_message = "One or more selected DB instance classes are not orderable for the engine version, storage type, and Region."
+    }
+
+    precondition {
+      condition     = !local.validate_engine ? true : (!var.enable_local_write_forwarding || data.aws_rds_engine_version.selected[0].supports_local_write_forwarding)
       error_message = "The selected engine version does not support local write forwarding."
     }
 
     precondition {
-      condition = !local.validate_engine || length(setsubtract(
+      condition = !local.validate_engine ? true : length(setsubtract(
         var.enabled_cloudwatch_logs_exports,
         data.aws_rds_engine_version.selected[0].exportable_log_types
       )) == 0
@@ -434,6 +447,10 @@ resource "aws_rds_cluster_instance" "main" {
   tags = merge(local.common_tags, each.value.tags)
 
   depends_on = [aws_iam_role_policy_attachment.monitoring]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_rds_shard_group" "main" {

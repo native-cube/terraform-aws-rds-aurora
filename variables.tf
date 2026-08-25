@@ -76,10 +76,11 @@ variable "engine_lifecycle_support" {
   default     = null
 
   validation {
-    condition = var.engine_lifecycle_support == null || contains([
+    condition = var.engine_lifecycle_support == null ? true : contains([
       "open-source-rds-extended-support",
       "open-source-rds-extended-support-disabled"
-    ], var.engine_lifecycle_support)
+      ], var.engine_lifecycle_support
+    )
     error_message = "engine_lifecycle_support must be an RDS open-source extended-support value."
   }
 }
@@ -101,7 +102,7 @@ variable "port" {
   default     = null
 
   validation {
-    condition     = var.port == null || (floor(var.port) == var.port && var.port >= 1 && var.port <= 65535)
+    condition     = var.port == null ? true : (floor(var.port) == var.port && var.port >= 1 && var.port <= 65535)
     error_message = "port must be an integer from 1 to 65535."
   }
 }
@@ -144,7 +145,7 @@ variable "master_password_wo_version" {
   default     = null
 
   validation {
-    condition     = var.master_password_wo_version == null || (floor(var.master_password_wo_version) == var.master_password_wo_version && var.master_password_wo_version >= 1)
+    condition     = var.master_password_wo_version == null ? true : (floor(var.master_password_wo_version) == var.master_password_wo_version && var.master_password_wo_version >= 1)
     error_message = "master_password_wo_version must be a positive whole number when set."
   }
 }
@@ -201,7 +202,7 @@ variable "availability_zones" {
   default     = null
 
   validation {
-    condition = var.availability_zones == null || (
+    condition = var.availability_zones == null ? true : (
       length(var.availability_zones) == length(distinct(var.availability_zones)) &&
       length(var.availability_zones) <= 3
     )
@@ -332,7 +333,7 @@ variable "allocated_storage" {
   default     = null
 
   validation {
-    condition     = var.allocated_storage == null || (floor(var.allocated_storage) == var.allocated_storage && var.allocated_storage > 0)
+    condition     = var.allocated_storage == null ? true : (floor(var.allocated_storage) == var.allocated_storage && var.allocated_storage > 0)
     error_message = "allocated_storage must be a positive whole number when set."
   }
 }
@@ -343,7 +344,7 @@ variable "storage_type" {
   default     = null
 
   validation {
-    condition     = var.storage_type == null || contains(["aurora", "aurora-iopt1", "gp3", "io1", "io2"], var.storage_type)
+    condition     = var.storage_type == null ? true : contains(["aurora", "aurora-iopt1", "gp3", "io1", "io2"], var.storage_type)
     error_message = "storage_type must be aurora, aurora-iopt1, gp3, io1, or io2 when set."
   }
 }
@@ -354,7 +355,7 @@ variable "iops" {
   default     = null
 
   validation {
-    condition     = var.iops == null || (floor(var.iops) == var.iops && var.iops > 0)
+    condition     = var.iops == null ? true : (floor(var.iops) == var.iops && var.iops > 0)
     error_message = "iops must be a positive whole number when set."
   }
 }
@@ -418,7 +419,7 @@ variable "instances" {
   validation {
     condition = alltrue([
       for instance in values(var.instances) :
-      instance.promotion_tier == null || (floor(instance.promotion_tier) == instance.promotion_tier && instance.promotion_tier >= 0 && instance.promotion_tier <= 15)
+      instance.promotion_tier == null ? true : (floor(instance.promotion_tier) == instance.promotion_tier && instance.promotion_tier >= 0 && instance.promotion_tier <= 15)
     ])
     error_message = "Each instance promotion_tier must be a whole number from 0 to 15."
   }
@@ -426,7 +427,7 @@ variable "instances" {
   validation {
     condition = alltrue([
       for instance in values(var.instances) :
-      instance.monitoring_interval == null || contains([0, 1, 5, 10, 15, 30, 60], instance.monitoring_interval)
+      instance.monitoring_interval == null ? true : contains([0, 1, 5, 10, 15, 30, 60], instance.monitoring_interval)
     ])
     error_message = "Each instance monitoring_interval must be 0, 1, 5, 10, 15, 30, or 60."
   }
@@ -446,11 +447,11 @@ variable "serverless_v1_scaling_configuration" {
 
   validation {
     condition = var.serverless_v1_scaling_configuration == null ? true : (
-      (var.serverless_v1_scaling_configuration.min_capacity == null || contains([1, 2, 4, 8, 16, 32, 64, 128, 192, 256, 384], var.serverless_v1_scaling_configuration.min_capacity)) &&
-      (var.serverless_v1_scaling_configuration.max_capacity == null || contains([1, 2, 4, 8, 16, 32, 64, 128, 192, 256, 384], var.serverless_v1_scaling_configuration.max_capacity)) &&
-      (var.serverless_v1_scaling_configuration.min_capacity == null || var.serverless_v1_scaling_configuration.max_capacity == null || var.serverless_v1_scaling_configuration.max_capacity >= var.serverless_v1_scaling_configuration.min_capacity) &&
-      (var.serverless_v1_scaling_configuration.seconds_until_auto_pause == null || (var.serverless_v1_scaling_configuration.seconds_until_auto_pause >= 300 && var.serverless_v1_scaling_configuration.seconds_until_auto_pause <= 86400)) &&
-      (var.serverless_v1_scaling_configuration.timeout_action == null || contains(["ForceApplyCapacityChange", "RollbackCapacityChange"], var.serverless_v1_scaling_configuration.timeout_action))
+      (var.serverless_v1_scaling_configuration.min_capacity == null ? true : contains([1, 2, 4, 8, 16, 32, 64, 128, 192, 256, 384], var.serverless_v1_scaling_configuration.min_capacity)) &&
+      (var.serverless_v1_scaling_configuration.max_capacity == null ? true : contains([1, 2, 4, 8, 16, 32, 64, 128, 192, 256, 384], var.serverless_v1_scaling_configuration.max_capacity)) &&
+      (var.serverless_v1_scaling_configuration.min_capacity == null || var.serverless_v1_scaling_configuration.max_capacity == null ? true : var.serverless_v1_scaling_configuration.max_capacity >= var.serverless_v1_scaling_configuration.min_capacity) &&
+      (var.serverless_v1_scaling_configuration.seconds_until_auto_pause == null ? true : (var.serverless_v1_scaling_configuration.seconds_until_auto_pause >= 300 && var.serverless_v1_scaling_configuration.seconds_until_auto_pause <= 86400)) &&
+      (var.serverless_v1_scaling_configuration.timeout_action == null ? true : contains(["ForceApplyCapacityChange", "RollbackCapacityChange"], var.serverless_v1_scaling_configuration.timeout_action))
     )
     error_message = "Serverless v1 capacities must be supported ACU values with max >= min, auto-pause must be 300-86400 seconds, and timeout_action must be a supported value."
   }
@@ -473,7 +474,7 @@ variable "serverless_v2_scaling_configuration" {
       var.serverless_v2_scaling_configuration.max_capacity >= var.serverless_v2_scaling_configuration.min_capacity &&
       floor(var.serverless_v2_scaling_configuration.min_capacity * 2) == var.serverless_v2_scaling_configuration.min_capacity * 2 &&
       floor(var.serverless_v2_scaling_configuration.max_capacity * 2) == var.serverless_v2_scaling_configuration.max_capacity * 2 &&
-      (var.serverless_v2_scaling_configuration.seconds_until_auto_pause == null || (var.serverless_v2_scaling_configuration.seconds_until_auto_pause >= 300 && var.serverless_v2_scaling_configuration.seconds_until_auto_pause <= 86400))
+      (var.serverless_v2_scaling_configuration.seconds_until_auto_pause == null ? true : (var.serverless_v2_scaling_configuration.seconds_until_auto_pause >= 300 && var.serverless_v2_scaling_configuration.seconds_until_auto_pause <= 86400))
     )
     error_message = "Serverless v2 capacities must use 0.5-ACU increments, max_capacity must be 0.5-256 and >= min_capacity, and auto-pause must be 300-86400 seconds."
   }
@@ -928,9 +929,10 @@ variable "managed_master_user_secret_rotation" {
   default = {}
 
   validation {
-    condition = (
-      var.managed_master_user_secret_rotation.automatically_after_days == null ||
-      (floor(var.managed_master_user_secret_rotation.automatically_after_days) == var.managed_master_user_secret_rotation.automatically_after_days && var.managed_master_user_secret_rotation.automatically_after_days >= 1 && var.managed_master_user_secret_rotation.automatically_after_days <= 1000)
+    condition = var.managed_master_user_secret_rotation.automatically_after_days == null ? true : (
+      floor(var.managed_master_user_secret_rotation.automatically_after_days) == var.managed_master_user_secret_rotation.automatically_after_days &&
+      var.managed_master_user_secret_rotation.automatically_after_days >= 1 &&
+      var.managed_master_user_secret_rotation.automatically_after_days <= 1000
     )
     error_message = "managed_master_user_secret_rotation.automatically_after_days must be a whole number from 1 to 1000."
   }

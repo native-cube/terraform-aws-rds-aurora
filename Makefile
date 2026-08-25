@@ -43,7 +43,7 @@ test:
 
 lint:
 	tflint --init
-	tflint --recursive --format compact
+	tflint --recursive --format compact --config "$(CURDIR)/.tflint.hcl"
 
 security:
 	trivy config --severity HIGH,CRITICAL --exit-code 1 --skip-dirs .terraform .

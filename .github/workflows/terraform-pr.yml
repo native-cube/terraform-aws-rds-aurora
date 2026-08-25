@@ -56,7 +56,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Run TFLint
-        run: tflint --recursive --format compact
+        run: tflint --recursive --format compact --config "${GITHUB_WORKSPACE}/.tflint.hcl"
 
       - name: Scan Terraform configuration
         uses: aquasecurity/trivy-action@v0.36.0
@@ -76,7 +76,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - terraform: 1.11.1
+          - terraform: 1.11.4
             provider: minimum
             upgrade: false
           - terraform: 1.15.9
